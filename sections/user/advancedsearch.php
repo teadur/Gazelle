@@ -152,6 +152,7 @@ if (count($_GET)) {
 
 	$Val->SetFields('matchtype', '0', 'inarray', 'Invalid matchtype field', array('inarray' => array('strict', 'fuzzy', 'regex')));
 
+	$Val->SetFields('lockedaccount', '0', 'inarray', 'Invalid locked account field', array('inarray' => array('any', 'locked', 'unlocked')));
 
 	$Val->SetFields('enabled', '0', 'inarray', 'Invalid enabled field', array('inarray' => array('', 0, 1, 2)));
 	$Val->SetFields('class', '0', 'inarray', 'Invalid class', array('inarray' => $ClassIDs));
@@ -220,6 +221,16 @@ if (count($_GET)) {
 					WHERE xs.uid = um1.ID
 				) AS Snatches,";
 		}
+		if ($_GET['invitees'] == 'off') {
+			$SQL .= "'X' AS Invitees,";
+		} else {
+			$SQL .= "
+			(
+			    SELECT COUNT(ui2.UserID)
+			    FROM users_info AS ui2
+			    WHERE um1.ID = ui2.Inviter
+  			) AS Invitees,";
+		}
 		$SQL .= '
 				um1.PermissionID,
 				um1.Email,
@@ -283,6 +294,19 @@ if (count($_GET)) {
 			}
 		}
 
+		if ($_GET['lockedaccount'] != '' && $_GET['lockedaccount'] != 'any') {
+			$Join['la'] = '';
+			
+			if ($_GET['lockedaccount'] == 'unlocked') {
+				$Join['la'] .= ' LEFT';
+				$Where[] = ' la.UserID IS NULL';
+			}
+
+			$Join['la'] .= ' JOIN locked_accounts AS la ON la.UserID = um1.ID ';
+		}
+
+		
+
 		if (!empty($_GET['cc'])) {
 			if ($_GET['cc_op'] == 'equal') {
 				$Where[] = "um1.ipcc = '".db_string($_GET['cc'])."'";
@@ -320,6 +344,12 @@ if (count($_GET)) {
 			$Where[] = implode(' AND ', num_compare('Invites', $_GET['invites'], $Invites1, $Invites2));
 		}
 
+		if (strlen($_GET['invitees1']) && $_GET['invitees'] != 'off') {
+			$Invitees1 = round($_GET['invitees1']);
+			$Invitees2 = round($_GET['invitees2']);
+			$Having[] = implode(' AND ', num_compare('Invitees', $_GET['invitees'], $Invitees1, $Invitees2));
+		}
+		
 		if ($_GET['disabled_invites'] == 'yes') {
 			$Where[] = 'ui1.DisableInvites = \'1\'';
 		} elseif ($_GET['disabled_invites'] == 'no') {
@@ -433,9 +463,14 @@ if (count($_GET)) {
 			$SQL .= ' WHERE '.implode(' AND ', $Where);
 		}
 
+		if (count($Group)) {
+			$SQL .= " GROUP BY " . implode(' ,', $Group);
+		}
+
 		if (count($Having)) {
 			$SQL .= ' HAVING '.implode(' AND ', $Having);
 		}
+
 		$SQL .= $Order;
 
 		if (count($Where) > 0 || count($Join) > 0 || count($Having) > 0) {
@@ -516,8 +551,14 @@ View::show_header('User search');
 				<td>
 					<input type="text" name="ip" size="20" value="<?=display_str($_GET['ip'])?>" />
 				</td>
-				<td class="label nobr"></td>
-				<td></td>
+				<td class="label nobr">Locked Account:</td>
+				<td>
+					<select name="lockedaccount">
+						<option value="any"<? if ($_GET['lockedaccount'] == 'any') { echo ' selected="selected"'; } ?>>Any</option>
+						<option value="locked"<? if ($_GET['lockedaccount'] == 'locked') { echo ' selected="selected"'; } ?>>Locked</option>
+						<option value="unlocked"<? if ($_GET['lockedaccount'] == 'unlocked') { echo ' selected="selected"'; } ?>>Unlocked</option>
+					</select>
+				</td>
 				<td class="label nobr">Secondary class:</td>
 				<td>
 					<select name="secclass">
@@ -654,7 +695,7 @@ View::show_header('User search');
 						<option value="above"<?   if (isset($_GET['snatched']) && $_GET['snatched'] === 'above')   { echo ' selected="selected"'; } ?>>Above</option>
 						<option value="below"<?   if (isset($_GET['snatched']) && $_GET['snatched'] === 'below')   { echo ' selected="selected"'; } ?>>Below</option>
 						<option value="between"<? if (isset($_GET['snatched']) && $_GET['snatched'] === 'between') { echo ' selected="selected"'; } ?>>Between</option>
-						<option value="off"<?     if (isset($_GET['snatched']) && $_GET['snatched'] === 'off')     { echo ' selected="selected"'; } ?>>Off</option>
+						<option value="off"<?     if (!isset($_GET['snatched']) || $_GET['snatched'] === 'off')     { echo ' selected="selected"'; } ?>>Off</option>
 					</select>
 					<input type="text" name="snatched1" size="6" value="<?=display_str($_GET['snatched1'])?>" />
 					<input type="text" name="snatched2" size="6" value="<?=display_str($_GET['snatched2'])?>" />
@@ -705,6 +746,28 @@ View::show_header('User search');
 					</select>
 					<input type="text" name="cc" size="2" value="<?=display_str($_GET['cc'])?>" />
 				</td>
+			</tr>
+
+			<tr>
+				
+				
+				<td></td>
+				<td></td>
+				
+				<td width="30%" class="label nobr"># of invitees:</td>
+				<td>
+					<select name="invitees">
+						<option value="equal" <?=isset($_GET['invitees']) && $_GET['invitees'] == 'equal' ? 'selected' : ''?>>Equal</option>
+						<option value="above" <?=isset($_GET['invitees']) && $_GET['invitees'] == 'above' ? 'selected' : ''?>>Above</option>
+						<option value="below" <?=isset($_GET['invitees']) && $_GET['invitees'] == 'below' ? 'selected' : ''?>>Below</option>
+						<option value="between" <?=isset($_GET['invitees']) && $_GET['invitees'] == 'between' ? 'selected' : ''?>>Between</option>
+						<option value="off" <?=!isset($_GET['invitees']) || $_GET['invitees'] == 'off' ? 'selected' : ''?>>Off</option>
+					</select>
+					<input type="text" name="invitees1" size="6" value="<?=display_str($_GET['invitees1'])?>" />
+					<input type="text" name="invitees2" size="6" value="<?=display_str($_GET['invitees2'])?>" />
+				</td>
+				<td></td>
+				<td></td>
 			</tr>
 
 			<tr>
@@ -789,9 +852,12 @@ echo $Pages;
 			<td>Downloads</td>
 			<td>Snatched</td>
 			<td>Invites</td>
+<? 		if (isset($_GET['invitees']) && $_GET['invitees'] != 'off') { ?>
+			<td>Invitees</td>
+<?		} ?>
 		</tr>
 <?
-while (list($UserID, $Username, $Uploaded, $Downloaded, $Snatched, $Class, $Email, $Enabled, $IP, $Invites, $DisableInvites, $Warned, $Donor, $JoinDate, $LastAccess) = $DB->next_record()) { ?>
+while (list($UserID, $Username, $Uploaded, $Downloaded, $Snatched, $Invitees, $Class, $Email, $Enabled, $IP, $Invites, $DisableInvites, $Warned, $Donor, $JoinDate, $LastAccess) = $DB->next_record()) { ?>
 		<tr>
 			<td><?=Users::format_username($UserID, true, true, true, true)?></td>
 			<td><?=Format::get_ratio_html($Uploaded, $Downloaded)?></td>
@@ -812,6 +878,9 @@ while (list($UserID, $Username, $Uploaded, $Downloaded, $Snatched, $Class, $Emai
 			<td><?=number_format((int)$Downloads)?></td>
 			<td><?=(is_numeric($Snatched) ? number_format($Snatched) : display_str($Snatched))?></td>
 			<td><? if ($DisableInvites) { echo 'X'; } else { echo number_format($Invites); } ?></td>
+<? 		if (isset($_GET['invitees']) && $_GET['invitees'] != 'off') { ?>
+			<td><?=number_format($Invitees)?></td>
+<?		} ?>
 		</tr>
 <?
 }

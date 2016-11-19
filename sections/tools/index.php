@@ -77,6 +77,19 @@ switch ($_REQUEST['action']) {
 		include(SERVER_ROOT.'/sections/tools/managers/whitelist_alter.php');
 		break;
 
+	case 'enable_requests':
+		include(SERVER_ROOT.'/sections/tools/managers/enable_requests.php');
+		break;
+	case 'ajax_take_enable_request':
+		if (FEATURE_EMAIL_REENABLE) {
+			include(SERVER_ROOT.'/sections/tools/managers/ajax_take_enable_request.php');
+		} else {
+			// Prevent post requests to the ajax page
+			header("Location: tools.php");
+			die();
+		}
+		break;
+
 	case 'login_watch':
 		include(SERVER_ROOT.'/sections/tools/managers/login_watch.php');
 		break;
@@ -168,20 +181,22 @@ switch ($_REQUEST['action']) {
 		$DB->query("
 			INSERT INTO news (UserID, Title, Body, Time)
 			VALUES ('$LoggedUser[ID]', '".db_string($_POST['title'])."', '".db_string($_POST['body'])."', '".sqltime()."')");
+		$Cache->delete_value('news_latest_id');
+		$Cache->delete_value('news_latest_title');
+		$Cache->delete_value('news');
 
 
 
 		NotificationsManager::send_push(NotificationsManager::get_push_enabled_users(), $_POST['title'], $_POST['body'], site_url() . 'index.php', NotificationsManager::NEWS);
-
-		$Cache->delete_value('news_latest_id');
-		$Cache->delete_value('news_latest_title');
-		$Cache->delete_value('news');
 
 		header('Location: index.php');
 		break;
 
 	case 'tokens':
 		include(SERVER_ROOT.'/sections/tools/managers/tokens.php');
+		break;
+	case 'multiple_freeleech':
+		include(SERVER_ROOT.'/sections/tools/managers/multiple_freeleech.php');
 		break;
 	case 'ocelot':
 		include(SERVER_ROOT.'/sections/tools/managers/ocelot.php');
@@ -228,7 +243,7 @@ switch ($_REQUEST['action']) {
 					GROUP BY p.ID");
 				list($ID, $Name, $Level, $Secondary, $Forums, $Values, $DisplayStaff, $UserCount) = $DB->next_record(MYSQLI_NUM, array(5));
 
-				if ($Level > $LoggedUser['EffectiveClass'] || $_REQUEST['level'] > $LoggedUser['EffectiveClass']) {
+				if (!check_perms('admin_manage_permissions', $Level)) {
 					error(403);
 				}
 				$Values = unserialize($Values);
@@ -422,6 +437,10 @@ switch ($_REQUEST['action']) {
 
 	case 'manipulate_tree':
 		include(SERVER_ROOT.'/sections/tools/misc/manipulate_tree.php');
+		break;
+
+	case 'site_options':
+		include(SERVER_ROOT.'/sections/tools/development/site_options.php');
 		break;
 
 	case 'recommendations':

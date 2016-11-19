@@ -328,6 +328,20 @@ function logout() {
 	die();
 }
 
+/**
+ * Logout all sessions
+ */
+function logout_all_sessions() {
+	$UserID = G::$LoggedUser['ID'];
+	
+	G::$DB->query("
+		DELETE FROM users_sessions
+		WHERE UserID = '$UserID'");
+	
+	G::$Cache->delete_value('users_sessions_' . $UserID);
+	logout();
+}
+
 function enforce_login() {
 	global $SessionID;
 	if (!$SessionID || !G::$LoggedUser) {
@@ -366,7 +380,18 @@ $Cache->cache_value('php_' . getmypid(), array(
 	'query' => $_SERVER['QUERY_STRING'],
 	'get' => $_GET,
 	'post' => array_diff_key($_POST, $StripPostKeys)), 600);
-require(SERVER_ROOT.'/sections/'.$Document.'/index.php');
+
+// Locked account constant
+define('STAFF_LOCKED', 1);
+
+$AllowedPages = ['staffpm', 'ajax', 'locked', 'logout', 'login'];
+
+if (isset(G::$LoggedUser['LockedAccount']) && !in_array($Document, $AllowedPages)) {
+	require(SERVER_ROOT . '/sections/locked/index.php');
+} else {
+	require(SERVER_ROOT . '/sections/' . $Document . '/index.php');
+}
+
 $Debug->set_flag('completed module execution');
 
 /* Required in the absence of session_start() for providing that pages will change

@@ -6,24 +6,34 @@ if (!isset($_REQUEST['authkey']) || !isset($_REQUEST['torrent_pass'])) {
 	$UserID		 = $LoggedUser['ID'];
 	$AuthKey	 = $LoggedUser['AuthKey'];
 } else {
+	if (strpos($_REQUEST['torrent_pass'], '_') !== false) {
+		error(404);
+	}
+	
 	$UserInfo = $Cache->get_value('user_'.$_REQUEST['torrent_pass']);
 	if (!is_array($UserInfo)) {
 		$DB->query("
-			SELECT ID, DownloadAlt
+			SELECT ID, DownloadAlt, la.UserID
 			FROM users_main AS m
 				INNER JOIN users_info AS i ON i.UserID = m.ID
+				LEFT JOIN locked_accounts AS la ON la.UserID = m.ID
 			WHERE m.torrent_pass = '".db_string($_REQUEST['torrent_pass'])."'
 				AND m.Enabled = '1'");
 		$UserInfo = $DB->next_record();
 		$Cache->cache_value('user_'.$_REQUEST['torrent_pass'], $UserInfo, 3600);
 	}
 	$UserInfo = array($UserInfo);
-	list($UserID, $DownloadAlt) = array_shift($UserInfo);
+	list($UserID, $DownloadAlt, $Locked) = array_shift($UserInfo);
 	if (!$UserID) {
 		error(0);
 	}
 	$TorrentPass = $_REQUEST['torrent_pass'];
 	$AuthKey = $_REQUEST['authkey'];
+
+	if ($Locked == $UserID) {
+		header('HTTP/1.1 403 Forbidden');
+		die();
+	}
 }
 
 $TorrentID = $_REQUEST['id'];
@@ -37,7 +47,7 @@ if (!is_number($TorrentID)) {
 /* uTorrent Remote and various scripts redownload .torrent files periodically.
 	To prevent this retardation from blowing bandwidth etc., let's block it
 	if the .torrent file has been downloaded four times before */
-$ScriptUAs = array('BTWebClient*', 'Python-urllib*', 'python-requests*');
+$ScriptUAs = array('BTWebClient*', 'Python-urllib*', 'python-requests*', 'uTorrent*');
 if (Misc::in_array_partial($_SERVER['HTTP_USER_AGENT'], $ScriptUAs)) {
 	$DB->query("
 		SELECT 1
@@ -172,8 +182,9 @@ $DB->query("
 	FROM torrents_files
 	WHERE TorrentID = '$TorrentID'");
 
+Torrents::set_snatch_update_time($UserID, Torrents::SNATCHED_UPDATE_AFTERDL);
 list($Contents) = $DB->next_record(MYSQLI_NUM, false);
-$FileName = TorrentsDL::construct_file_name($Info['PlainArtists'], $Name, $Year, $Media, $Format, $Encoding, false, $DownloadAlt);
+$FileName = TorrentsDL::construct_file_name($Info['PlainArtists'], $Name, $Year, $Media, $Format, $Encoding, $TorrentID, $DownloadAlt);
 
 if ($DownloadAlt) {
 	header('Content-Type: text/plain; charset=utf-8');

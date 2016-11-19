@@ -289,6 +289,9 @@ if (check_perms('site_send_unlimited_invites')) {
 					<li id="nav_friends"<?=
 						Format::add_class($PageID, array('friends'), 'active', true)?>>
 						<a href="friends.php">Friends</a></li>
+					<li id="nav_better"<?=
+						Format::add_class($PageID, array('better'), 'active', true)?>>
+						<a href="better.php">Better</a></li>
 				</ul>
 			</div>
 			<div id="menu">
@@ -398,7 +401,6 @@ if ($NotificationsManager->is_traditional(NotificationsManager::TORRENTS)) {
 	}
 	$NotificationsManager->clear_notifications_array();
 }
-
 if (check_perms('users_mod')) {
 	$ModBar[] = '<a href="tools.php">Toolbox</a>';
 }
@@ -406,12 +408,15 @@ if (check_perms('users_mod') || G::$LoggedUser['PermissionID'] == FORUM_MOD) {
 	$NumStaffPMs = G::$Cache->get_value('num_staff_pms_'.G::$LoggedUser['ID']);
 	if ($NumStaffPMs === false) {
 		if (check_perms('users_mod')) {
+			
+			$LevelCap = 1000;
+			
 			G::$DB->query("
 				SELECT COUNT(ID)
 				FROM staff_pm_conversations
 				WHERE Status = 'Unanswered'
 					AND (AssignedToUser = ".G::$LoggedUser['ID']."
-						OR (Level >= ".max(700, $Classes[MOD]['Level'])."
+						OR (LEAST('$LevelCap', Level) <= '".G::$LoggedUser['EffectiveClass']."'
 							AND Level <= ".G::$LoggedUser['Class']."))");
 		}
 		if (G::$LoggedUser['PermissionID'] == FORUM_MOD) {
@@ -491,6 +496,18 @@ if (check_perms('admin_reports')) {
 }
 
 
+if (check_perms('users_mod') && FEATURE_EMAIL_REENABLE) {
+	$NumEnableRequests = G::$Cache->get_value(AutoEnable::CACHE_KEY_NAME);
+	if ($NumEnableRequests === false) {
+		G::$DB->query("SELECT COUNT(1) FROM users_enable_requests WHERE Outcome IS NULL");
+		list($NumEnableRequests) = G::$DB->next_record();
+		G::$Cache->cache_value(AutoEnable::CACHE_KEY_NAME, $NumEnableRequests);
+	}
+
+	if ($NumEnableRequests > 0) {
+		$ModBar[] = '<a href="tools.php?action=enable_requests">' . $NumEnableRequests . " Enable requests</a>";
+	}
+}
 ?>
 <?
 if (!empty($Alerts) || !empty($ModBar)) { ?>

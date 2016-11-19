@@ -4,7 +4,8 @@
 Add the JavaScript validation into the display page using the class
 //-----------------------------------*/
 
-if (!empty($LoggedUser['ID'])) {
+// Allow users to reset their password while logged in
+if(!empty($LoggedUser['ID']) && $_REQUEST['act'] != 'recover') {
 	header('Location: index.php');
 	die();
 }
@@ -30,22 +31,23 @@ if (isset($_REQUEST['act']) && $_REQUEST['act'] == 'recover') {
 	// Recover password
 	if (!empty($_REQUEST['key'])) {
 		// User has entered a new password, use step 2
+
 		$DB->query("
 			SELECT
 				m.ID,
 				m.Email,
 				m.ipcc,
 				i.ResetExpires
-			FROM users_main AS m
+			FROM users_main as m
 				INNER JOIN users_info AS i ON i.UserID = m.ID
 			WHERE i.ResetKey = '".db_string($_REQUEST['key'])."'
 				AND i.ResetKey != ''
 				AND m.Enabled = '1'");
 		list($UserID, $Email, $Country, $Expires) = $DB->next_record();
-
 		if ($UserID && strtotime($Expires) > time()) {
-			// If the user has requested a password change, and his key has not expired
-			$Validate->SetFields('password', '1', 'regex', 'You entered an invalid password. A strong password is 8 characters or longer, contains at least 1 lowercase and uppercase letter, contains at least a number or symbol', array('regex' => '/(?=^.{8,}$)(?=.*[^a-zA-Z])(?=.*[A-Z])(?=.*[a-z]).*$/'));
+
+		// If the user has requested a password change, and his key has not expired
+			$Validate->SetFields('password', '1', 'regex', 'You entered an invalid password. A strong password is 8 characters or longer, contains at least 1 lowercase and uppercase letter, and contains at least a number or symbol, or is 20 characters or longer', array('regex' => '/(?=^.{8,}$)(?=.*[^a-zA-Z])(?=.*[A-Z])(?=.*[a-z]).*$|.{20,}/'));
 			$Validate->SetFields('verifypassword', '1', 'compare', 'Your passwords did not match.', array('comparefield' => 'password'));
 
 			if (!empty($_REQUEST['password'])) {
@@ -70,6 +72,9 @@ if (isset($_REQUEST['act']) && $_REQUEST['act'] == 'recover') {
 						VALUES
 							('$UserID', '$_SERVER[REMOTE_ADDR]', '".sqltime()."')");
 					$Reset = true; // Past tense form of "to reset", meaning that password has now been reset
+					$LoggedUser['ID'] = $UserID; // Set $LoggedUser['ID'] for logout_all_sessions() to work
+					
+					logout_all_sessions();
 
 
 				}
@@ -81,7 +86,6 @@ if (isset($_REQUEST['act']) && $_REQUEST['act'] == 'recover') {
 
 		} else {
 			// Either his key has expired, or he hasn't requested a pass change at all
-
 			if (strtotime($Expires) < time() && $UserID) {
 				// If his key has expired, clear all the reset information
 				$DB->query("
@@ -120,25 +124,8 @@ if (isset($_REQUEST['act']) && $_REQUEST['act'] == 'recover') {
 				if ($UserID) {
 					// Email exists in the database
 					// Set ResetKey, send out email, and set $Sent to 1 to show success page
-					$ResetKey = Users::make_secret();
-					$DB->query("
-						UPDATE users_info
-						SET
-							ResetKey = '".db_string($ResetKey)."',
-							ResetExpires = '".time_plus(60 * 60)."'
-						WHERE UserID = '$UserID'");
+					Users::resetPassword($UserID, $Username, $Email);
 
-					require(SERVER_ROOT.'/classes/templates.class.php');
-					$TPL = NEW TEMPLATE;
-					$TPL->open(SERVER_ROOT.'/templates/password_reset.tpl'); // Password reset template
-
-					$TPL->set('Username', $Username);
-					$TPL->set('ResetKey', $ResetKey);
-					$TPL->set('IP', $_SERVER['REMOTE_ADDR']);
-					$TPL->set('SITE_NAME', SITE_NAME);
-					$TPL->set('SITE_URL', NONSSL_SITE_URL);
-
-					Misc::send_email($Email, 'Password reset information for '.SITE_NAME, $TPL->get(),'noreply');
 					$Sent = 1; // If $Sent is 1, recover_step1.php displays a success message
 
 					//Log out all of the users current sessions
@@ -177,7 +164,6 @@ if (isset($_REQUEST['act']) && $_REQUEST['act'] == 'recover') {
 	} // End if (step 1)
 
 } // End password recovery
-
 // Normal login
 else {
 	$Validate->SetFields('username', true, 'regex', 'You did not enter a valid username.', array('regex' => USERNAME_REGEX));
@@ -191,7 +177,7 @@ else {
 
 	// Function to log a user's login attempt
 	function log_attempt($UserID) {
-		global $DB, $Cache, $AttemptID, $Attempts, $Bans, $BannedUntil, $Time, $UserID;
+		global $DB, $Cache, $AttemptID, $Attempts, $Bans, $BannedUntil;
 		$IPStr = $_SERVER['REMOTE_ADDR'];
 		$IPA = substr($IPStr, 0, strcspn($IPStr, '.'));
 		$IP = Tools::ip_to_unsigned($IPStr);
@@ -344,7 +330,9 @@ else {
 						log_attempt($UserID);
 						if ($Enabled == 2) {
 
-							header('location:login.php?action=disabled');
+							// Save the username in a cookie for the disabled page
+							setcookie('username', db_string($_POST['username']), time() + 60 * 60, '/', '', false);
+							header('Location: login.php?action=disabled');
 						} elseif ($Enabled == 0) {
 							$Err = 'Your account has not been confirmed.<br />Please check your email.';
 						}

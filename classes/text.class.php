@@ -12,52 +12,52 @@ class Text {
 	 * @var array $Smileys
 	 */
 	private static $Smileys = array(
-		':angry:'			=> 'angry.gif',
-		':-D'				=> 'biggrin.gif',
-		':D'				=> 'biggrin.gif',
-		':|'				=> 'blank.gif',
-		':-|'				=> 'blank.gif',
-		':blush:'			=> 'blush.gif',
-		':cool:'			=> 'cool.gif',
-		':&#39;('			=> 'crying.gif',
-		':crying:'			=> 'crying.gif',
-		'&gt;.&gt;'			=> 'eyesright.gif',
-		':frown:'			=> 'frown.gif',
-		'&lt;3'				=> 'heart.gif',
-		':unsure:'			=> 'hmm.gif',
-		//':\\'				=> 'hmm.gif',
+		':angry:'		=> 'angry.gif',
+		':-D'			=> 'biggrin.gif',
+		':D'			=> 'biggrin.gif',
+		':|'			=> 'blank.gif',
+		':-|'			=> 'blank.gif',
+		':blush:'		=> 'blush.gif',
+		':cool:'		=> 'cool.gif',
+		':&#39;('		=> 'crying.gif',
+		':crying:'		=> 'crying.gif',
+		'&gt;.&gt;'		=> 'eyesright.gif',
+		':frown:'		=> 'frown.gif',
+		'&lt;3'			=> 'heart.gif',
+		':unsure:'		=> 'hmm.gif',
+		//':\\'			=> 'hmm.gif',
 		':whatlove:'		=> 'ilu.gif',
-		':lol:'				=> 'laughing.gif',
+		':lol:'			=> 'laughing.gif',
 		':loveflac:'		=> 'loveflac.gif',
 		':flaclove:'		=> 'loveflac.gif',
-		':ninja:'			=> 'ninja.gif',
-		':no:'				=> 'no.gif',
-		':nod:'				=> 'nod.gif',
-		':ohno:'			=> 'ohnoes.gif',
-		':ohnoes:'			=> 'ohnoes.gif',
-		':omg:'				=> 'omg.gif',
-		':o'				=> 'ohshit.gif',
-		':O'				=> 'ohshit.gif',
-		':paddle:'			=> 'paddle.gif',
-		':('				=> 'sad.gif',
-		':-('				=> 'sad.gif',
-		':shifty:'			=> 'shifty.gif',
-		':sick:'			=> 'sick.gif',
-		':)'				=> 'smile.gif',
-		':-)'				=> 'smile.gif',
-		':sorry:'			=> 'sorry.gif',
-		':thanks:'			=> 'thanks.gif',
-		':P'				=> 'tongue.gif',
-		':p'				=> 'tongue.gif',
-		':-P'				=> 'tongue.gif',
-		':-p'				=> 'tongue.gif',
-		':wave:'			=> 'wave.gif',
-		';-)'				=> 'wink.gif',
-		':wink:'			=> 'wink.gif',
-		':creepy:'			=> 'creepy.gif',
-		':worried:'			=> 'worried.gif',
-		':wtf:'				=> 'wtf.gif',
-		':wub:'				=> 'wub.gif',
+		':ninja:'		=> 'ninja.gif',
+		':no:'			=> 'no.gif',
+		':nod:'			=> 'nod.gif',
+		':ohno:'		=> 'ohnoes.gif',
+		':ohnoes:'		=> 'ohnoes.gif',
+		':omg:'			=> 'omg.gif',
+		':o'			=> 'ohshit.gif',
+		':O'			=> 'ohshit.gif',
+		':paddle:'		=> 'paddle.gif',
+		':('			=> 'sad.gif',
+		':-('			=> 'sad.gif',
+		':shifty:'		=> 'shifty.gif',
+		':sick:'		=> 'sick.gif',
+		':)'			=> 'smile.gif',
+		':-)'			=> 'smile.gif',
+		':sorry:'		=> 'sorry.gif',
+		':thanks:'		=> 'thanks.gif',
+		':P'			=> 'tongue.gif',
+		':p'			=> 'tongue.gif',
+		':-P'			=> 'tongue.gif',
+		':-p'			=> 'tongue.gif',
+		':wave:'		=> 'wave.gif',
+		';-)'			=> 'wink.gif',
+		':wink:'		=> 'wink.gif',
+		':creepy:'		=> 'creepy.gif',
+		':worried:'		=> 'worried.gif',
+		':wtf:'			=> 'wtf.gif',
+		':wub:'			=> 'wub.gif',
 	);
 
 	/**
@@ -138,6 +138,8 @@ class Text {
 	 * @return string
 	 */
 	public static function full_format($Str, $OutputTOC = true, $Min = 3) {
+		global $Debug;
+		$Debug->set_flag('BBCode start');
 		$Str = display_str($Str);
 		self::$Headlines = array();
 
@@ -166,6 +168,7 @@ class Text {
 			$HTML = self::parse_toc($Min) . $HTML;
 		}
 
+		$Debug->set_flag('BBCode end');
 		return $HTML;
 	}
 
@@ -277,6 +280,7 @@ class Text {
 		$Len = strlen($Str);
 		$Array = array();
 		$ArrayPos = 0;
+		$StrLC = strtolower($Str);
 
 		while ($i < $Len) {
 			$Block = '';
@@ -393,7 +397,7 @@ class Text {
 				// Every time we find an internal open tag of the same type, search for the next close tag
 				// (as the first close tag won't do - it's been opened again)
 				do {
-					$CloseTag = stripos($Str, "[/$TagName]", $CloseTag + 1);
+					$CloseTag = strpos($StrLC, "[/$TagName]", $CloseTag + 1);
 					if ($CloseTag === false) {
 						$CloseTag = $Len;
 						break;

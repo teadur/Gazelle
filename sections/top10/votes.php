@@ -203,7 +203,7 @@ foreach ($TopVotes as $GroupID => $Group) {
 				<tr class="group discog<?=$SnatchedGroupClass?>" id="group_<?=$GroupID?>">
 					<td class="center">
 						<div id="showimg_<?=$GroupID?>" class="show_torrents">
-							<a href="#" class="tooltip show_torrents_link" onclick="toggle_group(<?=$GroupID?>, this, event);" title="Expand this group. Hold &quot;Ctrl&quot; while clicking to expand all groups on this page."></a>
+							<a href="#" class="tooltip show_torrents_link" onclick="toggle_group(<?=$GroupID?>, this, event);" title="Expand this group. Hold [Command] <em>(Mac)</em> or [Ctrl] <em>(PC)</em> while clicking to expand all groups on this page."></a>
 						</div>
 					</td>
 					<td class="center cats_col">
@@ -219,9 +219,13 @@ foreach ($TopVotes as $GroupID => $Group) {
 
 							<strong><?=$DisplayName?></strong> <!--<?Votes::vote_link($GroupID, $UserVote);?>-->
 <?		if ($IsBookmarked) { ?>
-							<span class="bookmark" style="float: right;"><a href="#" class="bookmarklink_torrent_<?=$GroupID?> brackets remove_bookmark" onclick="Unbookmark('torrent', <?=$GroupID?>, 'Bookmark'); return false;">Remove bookmark</a></span>
+							<span class="remove_bookmark float_right">
+								<a href="#" class="bookmarklink_torrent_<?=$GroupID?> brackets" onclick="Unbookmark('torrent', <?=$GroupID?>, 'Bookmark'); return false;">Remove bookmark</a>
+							</span>
 <?		} else { ?>
-							<span class="bookmark" style="float: right;"><a href="#" class="bookmarklink_torrent_<?=$GroupID?> brackets add_bookmark" onclick="Bookmark('torrent', <?=$GroupID?>, 'Remove bookmark'); return false;">Bookmark</a></span>
+							<span class="add_bookmark float_right">
+								<a href="#" class="bookmarklink_torrent_<?=$GroupID?> brackets" onclick="Bookmark('torrent', <?=$GroupID?>, 'Remove bookmark'); return false;">Bookmark</a>
+							</span>
 <?		} ?>
 							<div class="tags"><?=$TorrentTags->format()?></div>
 
@@ -275,7 +279,7 @@ foreach ($TopVotes as $GroupID => $Group) {
 				$EditionID++;
 ?>
 		<tr class="group_torrent groupid_<?=$GroupID?> edition<?=$SnatchedGroupClass?> hidden">
-			<td colspan="7" class="edition_info"><strong><a href="#" onclick="toggle_edition(<?=$GroupID?>, <?=$EditionID?>, this, event);" class="tooltip" title="Collapse this edition. Hold &quot;Ctrl&quot; while clicking to collapse all editions in this torrent group.">&minus;</a> <?=Torrents::edition_string($Torrent, $Group)?></strong></td>
+			<td colspan="7" class="edition_info"><strong><a href="#" onclick="toggle_edition(<?=$GroupID?>, <?=$EditionID?>, this, event);" class="tooltip" title="Collapse this edition. Hold [Command] <em>(Mac)</em> or [Ctrl] <em>(PC)</em> while clicking to collapse all editions in this torrent group.">&minus;</a> <?=Torrents::edition_string($Torrent, $Group)?></strong></td>
 		</tr>
 <?
 			}

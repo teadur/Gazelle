@@ -7,6 +7,12 @@ if ($ConvID = (int)$_GET['id']) {
 		FROM staff_pm_conversations
 		WHERE ID = $ConvID");
 	list($Subject, $UserID, $Level, $AssignedToUser, $Unread, $Status) = $DB->next_record();
+	
+	$LevelCap = 1000;
+	
+
+	$PMLevel = $Level;
+	$Level = min($Level, $LevelCap);
 
 	if (!(($UserID == $LoggedUser['ID'])
 			|| ($AssignedToUser == $LoggedUser['ID'])
@@ -122,7 +128,8 @@ if ($ConvID = (int)$_GET['id']) {
 		// List common responses
 		$DB->query("
 			SELECT ID, Name
-			FROM staff_pm_responses");
+			FROM staff_pm_responses
+			ORDER BY Name ASC");
 		while (list($ID, $Name) = $DB->next_record()) {
 ?>
 					<option value="<?=$ID?>"><?=$Name?></option>
@@ -164,14 +171,14 @@ if ($ConvID = (int)$_GET['id']) {
 					<select id="assign_to" name="assign">
 						<optgroup label="User classes">
 <?		// FLS "class"
-		$Selected = ((!$AssignedToUser && $Level == 0) ? ' selected="selected"' : '');
+		$Selected = ((!$AssignedToUser && $PMLevel == 0) ? ' selected="selected"' : '');
 ?>
 							<option value="class_0"<?=$Selected?>>First Line Support</option>
 <?		// Staff classes
 		foreach ($ClassLevels as $Class) {
 			// Create one <option> for each staff user class
 			if ($Class['Level'] >= 650) {
-				$Selected = ((!$AssignedToUser && ($Level == $Class['Level'])) ? ' selected="selected"' : '');
+				$Selected = ((!$AssignedToUser && ($PMLevel == $Class['Level'])) ? ' selected="selected"' : '');
 ?>
 							<option value="class_<?=$Class['Level']?>"<?=$Selected?>><?=$Class['Name']?></option>
 <?

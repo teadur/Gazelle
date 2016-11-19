@@ -66,12 +66,14 @@ if (check_perms('users_mod')) { // Person viewing is a staff member
 			i.DisableRequests," . "
 			m.FLTokens,
 			SHA1(i.AdminComment),
-			i.InfoTitle
+			i.InfoTitle,
+			la.Type AS LockedAccount
 		FROM users_main AS m
 			JOIN users_info AS i ON i.UserID = m.ID
 			LEFT JOIN users_main AS inviter ON i.Inviter = inviter.ID
 			LEFT JOIN permissions AS p ON p.ID = m.PermissionID
 			LEFT JOIN forums_posts AS posts ON posts.AuthorID = m.ID
+			LEFT JOIN locked_accounts AS la ON la.UserID = m.ID
 		WHERE m.ID = '$UserID'
 		GROUP BY AuthorID");
 
@@ -79,7 +81,7 @@ if (check_perms('users_mod')) { // Person viewing is a staff member
 		header("Location: log.php?search=User+$UserID");
 	}
 
-	list($Username,	$Email,	$LastAccess, $IP, $Class, $Uploaded, $Downloaded, $RequiredRatio, $CustomTitle, $torrent_pass, $Enabled, $Paranoia, $Invites, $DisableLeech, $Visible, $JoinDate, $Info, $Avatar, $AdminComment, $Donor, $Artist, $Warned, $SupportFor, $RestrictedForums, $PermittedForums, $InviterID, $InviterName, $ForumPosts, $RatioWatchEnds, $RatioWatchDownload, $DisableAvatar, $DisableInvites, $DisablePosting, $DisableForums, $DisableTagging, $DisableUpload, $DisableWiki, $DisablePM, $DisableIRC, $DisableRequests, $FLTokens, $CommentHash, $InfoTitle) = $DB->next_record(MYSQLI_NUM, array(8, 11));
+	list($Username,	$Email,	$LastAccess, $IP, $Class, $Uploaded, $Downloaded, $RequiredRatio, $CustomTitle, $torrent_pass, $Enabled, $Paranoia, $Invites, $DisableLeech, $Visible, $JoinDate, $Info, $Avatar, $AdminComment, $Donor, $Artist, $Warned, $SupportFor, $RestrictedForums, $PermittedForums, $InviterID, $InviterName, $ForumPosts, $RatioWatchEnds, $RatioWatchDownload, $DisableAvatar, $DisableInvites, $DisablePosting, $DisableForums, $DisableTagging, $DisableUpload, $DisableWiki, $DisablePM, $DisableIRC, $DisableRequests, $FLTokens, $CommentHash, $InfoTitle, $LockedAccount) = $DB->next_record(MYSQLI_NUM, array(8, 11));
 } else { // Person viewing is a normal user
 	$DB->query("
 		SELECT
@@ -556,7 +558,19 @@ if ($Override = check_perms('users_mod') || $OwnProfile || !empty($SupportFor)) 
 		?></li>
 <?
 }
+
+if ($OwnProfile || check_perms('users_mod')) { 
+	$DB->query("SELECT MAX(uhp.ChangeTime), ui.JoinDate
+				FROM users_info ui
+				LEFT JOIN users_history_passwords uhp ON uhp.UserID = $UserID
+				WHERE ui.UserID = $UserID");
+	list($PasswordHistory, $JoinDate) = G::$DB->next_record();
+	$Age = (empty($PasswordHistory)) ? time_diff($JoinDate) : time_diff($PasswordHistory);
+	$PasswordAge = substr($Age, 0, strpos($Age, " ago"));
 ?>
+	<li>Password age: <?=$PasswordAge?></li>
+<? } ?>
+
 			</ul>
 		</div>
 <?
@@ -869,17 +883,20 @@ if (check_perms('users_mod', $Class) || $IsFLS) {
 	$DB->query("
 		SELECT
 			SQL_CALC_FOUND_ROWS
-			ID,
-			Subject,
-			Status,
-			Level,
-			AssignedToUser,
-			Date,
-			ResolverID
-		FROM staff_pm_conversations
-		WHERE UserID = $UserID
-			AND (Level <= $UserLevel OR AssignedToUser = '".$LoggedUser['ID']."')
-		ORDER BY Date DESC");
+			spc.ID,
+			spc.Subject,
+			spc.Status,
+			spc.Level,
+			spc.AssignedToUser,
+			spc.Date,
+			COUNT(spm.ID) AS Resplies,
+			spc.ResolverID
+		FROM staff_pm_conversations AS spc
+		JOIN staff_pm_messages spm ON spm.ConvID = spc.ID
+		WHERE spc.UserID = $UserID
+			AND (spc.Level <= $UserLevel OR spc.AssignedToUser = '".$LoggedUser['ID']."')
+		GROUP BY spc.ID
+		ORDER BY spc.Date DESC");
 	if ($DB->has_results()) {
 		$StaffPMs = $DB->to_array();
 ?>
@@ -892,11 +909,12 @@ if (check_perms('users_mod', $Class) || $IsFLS) {
 					<td>Subject</td>
 					<td>Date</td>
 					<td>Assigned to</td>
+					<td>Replies</td>
 					<td>Resolved by</td>
 				</tr>
 <?
 		foreach ($StaffPMs as $StaffPM) {
-			list($ID, $Subject, $Status, $Level, $AssignedToUser, $Date, $ResolverID) = $StaffPM;
+			list($ID, $Subject, $Status, $Level, $AssignedToUser, $Date, $Replies, $ResolverID) = $StaffPM;
 			// Get assigned
 			if ($AssignedToUser == '') {
 				// Assigned to class
@@ -922,6 +940,7 @@ if (check_perms('users_mod', $Class) || $IsFLS) {
 					<td><a href="staffpm.php?action=viewconv&amp;id=<?=$ID?>"><?=display_str($Subject)?></a></td>
 					<td><?=time_diff($Date, 2, true)?></td>
 					<td><?=$Assigned?></td>
+					<td><?=$Replies - 1?></td>
 					<td><?=$Resolver?></td>
 				</tr>
 <?		} ?>
@@ -1219,6 +1238,30 @@ if (check_perms('users_mod', $Class)) { ?>
 			</tr>
 <?	} ?>
 		</table>
+<?  if (check_perms('users_disable_any')) { ?>
+		<table class="layout">
+			<tr class="colhead">
+				<td colspan="2">
+					Lock Account
+				</td>
+			</tr>
+			<tr>
+	            <td class="label">Lock Account:</td>
+	            <td>
+	                <input type="checkbox" name="LockAccount" id="LockAccount" <? if($LockedAccount) { ?> checked="checked" <? } ?>/>
+	            </td>
+	        </tr>
+	        <tr>
+	            <td class="label">Reason:</td>
+	            <td>
+	                <select name="LockReason">
+	                    <option value="---">---</option>
+	                    <option value="<?=STAFF_LOCKED?>" <? if ($LockedAccount == STAFF_LOCKED) { ?> selected <? } ?>>Staff Lock</option>
+	                </select>
+	            </td>
+	        </tr>
+		</table>
+<?  }  ?>
 		<table class="layout" id="user_privs_box">
 			<tr class="colhead">
 				<td colspan="2">

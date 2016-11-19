@@ -55,6 +55,7 @@ $DB->query("
 	WHERE p.ID = '$PostID'");
 list($OldBody, $AuthorID, $TopicID, $IsLocked, $ForumID, $MinClassWrite, $Page) = $DB->next_record();
 
+
 // Make sure they aren't trying to edit posts they shouldn't
 // We use die() here instead of error() because whatever we spit out is displayed to the user in the box where his forum post is
 if (!Forums::check_forumperm($ForumID, 'Write') || ($IsLocked && !check_perms('site_moderate_forums'))) {

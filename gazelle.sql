@@ -536,6 +536,11 @@ CREATE TABLE `label_aliases` (
   KEY `AliasLabel` (`AliasLabel`)
 ) ENGINE=InnoDB CHARSET utf8;
 
+CREATE TABLE `last_sent_email` (
+  `UserID` int(10) NOT NULL,
+  PRIMARY KEY (`UserID`)
+) ENGINE=InnoDB CHARSET utf8;
+
 CREATE TABLE `lastfm_users` (
   `ID` int(10) unsigned NOT NULL,
   `Username` varchar(20) NOT NULL,
@@ -547,6 +552,13 @@ CREATE TABLE `library_contest` (
   `TorrentID` int(10) NOT NULL,
   `Points` int(10) NOT NULL DEFAULT '0',
   PRIMARY KEY (`UserID`,`TorrentID`)
+) ENGINE=InnoDB CHARSET utf8;
+
+CREATE TABLE `locked_accounts` (
+  `UserID` int(10) unsigned NOT NULL,
+  `Type` tinyint(1) NOT NULL,
+  PRIMARY KEY (`UserID`),
+  CONSTRAINT `fk_user_id` FOREIGN KEY (`UserID`) REFERENCES `users_main` (`ID`) ON DELETE CASCADE
 ) ENGINE=InnoDB CHARSET utf8;
 
 CREATE TABLE `log` (
@@ -790,6 +802,16 @@ CREATE TABLE `site_history` (
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB CHARSET utf8;
 
+CREATE TABLE `site_options` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `Name` varchar(64) NOT NULL,
+  `Value` tinytext NOT NULL,
+  `Comment` text NOT NULL,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `Name` (`Name`),
+  KEY `name_index` (`Name`)
+) ENGINE=InnoDB CHARSET utf8;
+
 CREATE TABLE `sphinx_a` (
   `gid` int(11) DEFAULT NULL,
   `aname` text,
@@ -828,8 +850,10 @@ CREATE TABLE `sphinx_delta` (
   `FileList` mediumtext,
   `Description` text,
   `VoteScore` float NOT NULL DEFAULT '0',
+  `LastChanged` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`ID`),
-  KEY `GroupID` (`GroupID`)
+  KEY `GroupID` (`GroupID`),
+  KEY `Size` (`Size`)
 ) ENGINE=MyISAM CHARSET utf8;
 
 CREATE TABLE `sphinx_hash` (
@@ -1096,11 +1120,6 @@ CREATE TABLE `top10_history_torrents` (
   `TagString` varchar(100) NOT NULL DEFAULT ''
 ) ENGINE=InnoDB CHARSET utf8;
 
-CREATE TABLE `top_snatchers` (
-  `UserID` int(10) unsigned NOT NULL,
-  PRIMARY KEY (`UserID`)
-) ENGINE=InnoDB CHARSET utf8;
-
 CREATE TABLE `torrents` (
   `ID` int(10) NOT NULL AUTO_INCREMENT,
   `GroupID` int(10) NOT NULL,
@@ -1126,7 +1145,7 @@ CREATE TABLE `torrents` (
   `Seeders` int(6) NOT NULL DEFAULT '0',
   `last_action` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   `FreeTorrent` enum('0','1','2') NOT NULL DEFAULT '0',
-  `FreeLeechType` enum('0','1','2','3') NOT NULL DEFAULT '0',
+  `FreeLeechType` enum('0','1','2','3','4','5','6','7') NOT NULL DEFAULT '0',
   `Time` datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
   `Description` text,
   `Snatched` int(10) unsigned NOT NULL DEFAULT '0',
@@ -1324,6 +1343,14 @@ CREATE TABLE `torrents_votes` (
   CONSTRAINT `torrents_votes_ibfk_1` FOREIGN KEY (`GroupID`) REFERENCES `torrents_group` (`ID`) ON DELETE CASCADE
 ) ENGINE=InnoDB CHARSET utf8;
 
+CREATE TABLE `upload_contest` (
+  `TorrentID` int(10) unsigned NOT NULL,
+  `UserID` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`TorrentID`),
+  KEY `UserID` (`UserID`),
+  CONSTRAINT `upload_contest_ibfk_1` FOREIGN KEY (`UserID`) REFERENCES `users_main` (`ID`) ON DELETE CASCADE
+) ENGINE=InnoDB CHARSET utf8;
+
 CREATE TABLE `user_questions` (
   `ID` int(10) NOT NULL AUTO_INCREMENT,
   `Question` mediumtext NOT NULL,
@@ -1389,6 +1416,24 @@ CREATE TABLE `users_enable_recommendations` (
   `Enable` tinyint(1) DEFAULT NULL,
   PRIMARY KEY (`ID`),
   KEY `Enable` (`Enable`)
+) ENGINE=InnoDB CHARSET utf8;
+
+CREATE TABLE `users_enable_requests` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `UserID` int(10) unsigned NOT NULL,
+  `Email` varchar(255) NOT NULL,
+  `IP` varchar(15) NOT NULL DEFAULT '0.0.0.0',
+  `UserAgent` text NOT NULL,
+  `Timestamp` datetime NOT NULL,
+  `HandledTimestamp` datetime DEFAULT NULL,
+  `Token` char(32) DEFAULT NULL,
+  `CheckedBy` int(10) unsigned DEFAULT NULL,
+  `Outcome` tinyint(1) DEFAULT NULL COMMENT '1 for approved, 2 for denied, 3 for discarded',
+  PRIMARY KEY (`ID`),
+  KEY `UserId` (`UserID`),
+  KEY `CheckedBy` (`CheckedBy`),
+  CONSTRAINT `users_enable_requests_ibfk_1` FOREIGN KEY (`UserID`) REFERENCES `users_main` (`ID`),
+  CONSTRAINT `users_enable_requests_ibfk_2` FOREIGN KEY (`CheckedBy`) REFERENCES `users_main` (`ID`)
 ) ENGINE=InnoDB CHARSET utf8;
 
 CREATE TABLE `users_freeleeches` (
@@ -1788,23 +1833,23 @@ CREATE TABLE `xbt_client_whitelist` (
 
 CREATE TABLE `xbt_files_users` (
   `uid` int(11) NOT NULL,
-  `active` tinyint(1) NOT NULL,
-  `announced` int(11) NOT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `announced` int(11) NOT NULL DEFAULT '0',
   `completed` tinyint(1) NOT NULL DEFAULT '0',
-  `downloaded` bigint(20) NOT NULL,
-  `remaining` bigint(20) NOT NULL,
-  `uploaded` bigint(20) NOT NULL,
-  `upspeed` int(10) unsigned NOT NULL,
-  `downspeed` int(10) unsigned NOT NULL,
+  `downloaded` bigint(20) NOT NULL DEFAULT '0',
+  `remaining` bigint(20) NOT NULL DEFAULT '0',
+  `uploaded` bigint(20) NOT NULL DEFAULT '0',
+  `upspeed` int(10) unsigned NOT NULL DEFAULT '0',
+  `downspeed` int(10) unsigned NOT NULL DEFAULT '0',
   `corrupt` bigint(20) NOT NULL DEFAULT '0',
-  `timespent` int(10) unsigned NOT NULL,
-  `useragent` varchar(51) NOT NULL,
+  `timespent` int(10) unsigned NOT NULL DEFAULT '0',
+  `useragent` varchar(51) NOT NULL DEFAULT '',
   `connectable` tinyint(4) NOT NULL DEFAULT '1',
   `peer_id` binary(20) NOT NULL DEFAULT '\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0',
   `fid` int(11) NOT NULL,
-  `mtime` int(11) NOT NULL,
+  `mtime` int(11) NOT NULL DEFAULT '0',
   `ip` varchar(15) NOT NULL DEFAULT '',
-  PRIMARY KEY (`peer_id`,`fid`),
+  PRIMARY KEY (`peer_id`,`fid`,`uid`),
   KEY `remaining_idx` (`remaining`),
   KEY `fid_idx` (`fid`),
   KEY `mtime_idx` (`mtime`),
@@ -1817,8 +1862,8 @@ CREATE TABLE `xbt_snatched` (
   `fid` int(11) NOT NULL,
   `IP` varchar(15) NOT NULL,
   KEY `fid` (`fid`),
-  KEY `uid` (`uid`),
-  KEY `tstamp` (`tstamp`)
+  KEY `tstamp` (`tstamp`),
+  KEY `uid_tstamp` (`uid`,`tstamp`)
 ) ENGINE=InnoDB CHARSET utf8;
 
 CREATE DEFINER=`root`@`localhost` FUNCTION `binomial_ci`(p int, n int) RETURNS float

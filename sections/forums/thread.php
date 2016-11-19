@@ -11,7 +11,6 @@ Things to expect in $_GET:
 
 //---------- Things to sort out before it can start printing/generating content
 
-
 // Enable TOC
 Text::$TOC = true;
 
@@ -37,7 +36,6 @@ if (!isset($_GET['threadid']) || !is_number($_GET['threadid'])) {
 } else {
 	$ThreadID = $_GET['threadid'];
 }
-
 
 if (isset($LoggedUser['PostsPerPage'])) {
 	$PerPage = $LoggedUser['PostsPerPage'];
@@ -340,7 +338,7 @@ if ($ThreadInfo['NoPoll'] == 0) {
 				<li>
 					<a href="forums.php?action=change_vote&amp;threadid=<?=$ThreadID?>&amp;auth=<?=$LoggedUser['AuthKey']?>&amp;vote=<?=(int)$i?>"><?=display_str($Answer == '' ? 'Blank' : $Answer)?></a>
 					 - <?=$StaffVotes[$i]?>&nbsp;(<?=number_format(((float)$Votes[$i] / $TotalVotes) * 100, 2)?>%)
-					<a href="forums.php?action=delete_poll_option&amp;threadid=<?=$ThreadID?>&amp;auth=<?=$LoggedUser['AuthKey']?>&amp;vote=<?=(int)$i?>" class="brackets tooltip" title="Delete poll option">X</a>
+					<a href="forums.php?action=delete_poll_option&amp;threadid=<?=$ThreadID?>&amp;auth=<?=$LoggedUser['AuthKey']?>&amp;vote=<?=(int)$i?>" onclick="return confirm('Are you sure you want to delete this poll option?');" class="brackets tooltip" title="Delete poll option">X</a>
 				</li>
 <?			} ?>
 				<li>
@@ -429,6 +427,7 @@ if ($ThreadInfo['StickyPostID']) {
 foreach ($Thread as $Key => $Post) {
 	list($PostID, $AuthorID, $AddedTime, $Body, $EditedUserID, $EditedTime, $EditedUsername) = array_values($Post);
 	list($AuthorID, $Username, $PermissionID, $Paranoia, $Artist, $Donor, $Warned, $Avatar, $Enabled, $UserTitle) = array_values(Users::user_info($AuthorID));
+
 ?>
 <table class="forum_post wrap_overflow box vertical_margin<?
 	if (((!$ThreadInfo['IsLocked'] || $ThreadInfo['IsSticky'])

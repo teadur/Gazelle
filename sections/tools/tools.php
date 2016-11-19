@@ -115,6 +115,7 @@ View::show_header('Staff Tools');
 <?
 	// begin Queue category
 	$ToolsHTML = "";
+	create_row("Auto-Enable requests", "tools.php?action=enable_requests", check_perms("users_mod"));
 	create_row("Login watch", "tools.php?action=login_watch", check_perms("admin_login_watch"));
 
 	if ($ToolsHTML) {
@@ -201,6 +202,7 @@ View::show_header('Staff Tools');
 	create_row("Collage recovery", "collages.php?action=recover", check_perms("site_collages_recover"));
 	create_row("\"Do Not Upload\" list", "tools.php?action=dnu", check_perms("admin_dnu"));
 	create_row("Manage freeleech tokens", "tools.php?action=tokens", check_perms("users_mod"));
+	create_row("Multiple freeleech", "tools.php?action=multiple_freeleech", check_perms("users_mod"));
 	create_row("Label aliases", "tools.php?action=label_aliases", check_perms("users_mod"));
 	create_row("Tag aliases", "tools.php?action=tag_aliases", check_perms("users_mod"));
 	create_row("Batch tag editor", "tools.php?action=edit_tags", check_perms("users_mod"));
@@ -224,6 +226,7 @@ View::show_header('Staff Tools');
 	create_row("Rerender stylesheet gallery images", "tools.php?action=rerender_gallery", check_perms("site_debug") || check_perms("users_mod"));
 	create_row("Schedule", "schedule.php?auth=$LoggedUser[AuthKey]", check_perms("site_debug"));
 	create_row("Service stats", "tools.php?action=service_stats", check_perms("site_debug"));
+	create_row("Site options", "tools.php?action=site_options", check_perms('users_mod'));
 	create_row("Tracker info", "tools.php?action=ocelot_info", check_perms("users_mod"));
 	create_row("Update GeoIP", "tools.php?action=update_geoip", check_perms("admin_update_geoip"));
 

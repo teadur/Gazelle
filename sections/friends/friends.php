@@ -13,10 +13,17 @@ include_once(SERVER_ROOT.'/classes/paranoia.class.php');
 
 
 
-View::show_header('Friends');
+View::show_header('Friends','comments');
 
 
 $UserID = $LoggedUser['ID'];
+
+
+$Select = "f.FriendID";
+$Where = "f.UserID = '$UserID'";
+$Join1 = "f.FriendID = m.ID";
+$Join2 = "f.FriendID = i.UserID";
+
 
 
 list($Page, $Limit) = Format::page_limit(FRIENDS_PER_PAGE);
@@ -25,7 +32,7 @@ list($Page, $Limit) = Format::page_limit(FRIENDS_PER_PAGE);
 $DB->query("
 	SELECT
 		SQL_CALC_FOUND_ROWS
-		f.FriendID,
+		$Select,
 		f.Comment,
 		m.Username,
 		m.Uploaded,
@@ -35,9 +42,9 @@ $DB->query("
 		m.LastAccess,
 		i.Avatar
 	FROM friends AS f
-		JOIN users_main AS m ON f.FriendID = m.ID
-		JOIN users_info AS i ON f.FriendID = i.UserID
-	WHERE f.UserID = '$UserID'
+		JOIN users_main AS m ON $Join1
+		JOIN users_info AS i ON $Join2
+	WHERE $Where
 	ORDER BY Username
 	LIMIT $Limit");
 $Friends = $DB->to_array(false, MYSQLI_BOTH, array(6, 'Paranoia'));
